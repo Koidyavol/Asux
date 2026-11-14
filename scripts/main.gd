@@ -161,10 +161,11 @@ func _build_ui() -> void:
         inventory_buttons[name] = b
         inventory_counts[name] = count
 
-    _add_control("◀", Vector2(18, 430), Vector2(72, 72), "move_left")
-    _add_control("▶", Vector2(100, 430), Vector2(72, 72), "move_right")
-    _add_control("LOMPAT", Vector2(690, 430), Vector2(105, 72), "jump")
-    _add_control("PUKUL", Vector2(810, 430), Vector2(125, 72), "punch")
+    # Mobile action pads: directional controls on the left, actions on the right.
+    _add_control("◀", "KIRI", Vector2(22, 424), Vector2(76, 76), "move_left", Color("#2878a8"))
+    _add_control("▶", "KANAN", Vector2(108, 424), Vector2(76, 76), "move_right", Color("#2878a8"))
+    _add_control("▲", "LOMPAT", Vector2(690, 424), Vector2(88, 76), "jump", Color("#268b70"))
+    _add_control("✦", "PUKUL", Vector2(788, 424), Vector2(104, 76), "punch", Color("#bd7134"))
 
     var hint := Label.new()
     hint.text = "Keyboard: A/D atau ←/→ • Space lompat • J pukul • Tap area kosong untuk pasang blok"
@@ -173,14 +174,53 @@ func _build_ui() -> void:
     hint.add_theme_font_size_override("font_size", 13)
     ui_layer.add_child(hint)
 
-func _add_control(label_text: String, pos: Vector2, button_size: Vector2, action: String) -> void:
+func _add_control(symbol: String, caption: String, pos: Vector2, button_size: Vector2, action: String, accent: Color) -> void:
     var b := Button.new()
-    b.text = label_text
+    b.text = symbol
     b.position = pos
     b.size = button_size
-    b.add_theme_font_size_override("font_size", 19)
+    b.focus_mode = Control.FOCUS_NONE
+    b.add_theme_font_size_override("font_size", 27)
+    b.add_theme_color_override("font_color", Color("#ffffff"))
+    b.add_theme_color_override("font_hover_color", Color("#ffffff"))
+    b.add_theme_color_override("font_pressed_color", Color("#ffffff"))
+
+    var normal := StyleBoxFlat.new()
+    normal.bg_color = Color("#172b3b")
+    normal.border_color = accent
+    normal.set_border_width_all(3)
+    normal.set_corner_radius_all(22)
+    normal.shadow_color = Color(0, 0, 0, 0.28)
+    normal.shadow_size = 5
+    normal.shadow_offset = Vector2(0, 3)
+    var hover := normal.duplicate() as StyleBoxFlat
+    hover.bg_color = Color("#24465b")
+    var pressed := normal.duplicate() as StyleBoxFlat
+    pressed.bg_color = accent
+    pressed.shadow_size = 1
+    pressed.shadow_offset = Vector2(0, 1)
+    b.add_theme_stylebox_override("normal", normal)
+    b.add_theme_stylebox_override("hover", hover)
+    b.add_theme_stylebox_override("pressed", pressed)
+    b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+
+    var tag := Label.new()
+    tag.text = caption
+    tag.position = Vector2(0, button_size.y - 23)
+    tag.size = Vector2(button_size.x, 18)
+    tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    tag.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    tag.add_theme_font_size_override("font_size", 10)
+    tag.add_theme_color_override("font_color", Color("#eaf6ff"))
+    tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    b.add_child(tag)
+
     b.button_down.connect(func(): Input.action_press(action))
     b.button_up.connect(func(): Input.action_release(action))
+    b.mouse_exited.connect(func():
+        if Input.is_action_pressed(action):
+            Input.action_release(action)
+    )
     ui_layer.add_child(b)
 
 func _select_block(block: String) -> void:
