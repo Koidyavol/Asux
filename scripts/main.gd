@@ -85,11 +85,11 @@ func _set_cell(cell: Vector2i, block: String) -> void:
     body.set_meta("cell", cell)
     body.add_to_group("world_blocks")
     var visual := Polygon2D.new()
-    visual.polygon = PackedVector2Array(Vector2(-16,-16), Vector2(16,-16), Vector2(16,16), Vector2(-16,16))
+    visual.polygon = PackedVector2Array([Vector2(-16, -16), Vector2(16, -16), Vector2(16, 16), Vector2(-16, 16)])
     visual.color = BLOCKS[block]
     body.add_child(visual)
     var outline := Line2D.new()
-    outline.points = PackedVector2Array(Vector2(-16,-16), Vector2(16,-16), Vector2(16,16), Vector2(-16,16), Vector2(-16,-16))
+    outline.points = PackedVector2Array([Vector2(-16, -16), Vector2(16, -16), Vector2(16, 16), Vector2(-16, 16), Vector2(-16, -16)])
     outline.width = 1.0
     outline.default_color = Color(0,0,0,0.22)
     body.add_child(outline)
