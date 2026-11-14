@@ -5,6 +5,7 @@ const JUMP_VELOCITY := -430.0
 const SPRITESHEET: Texture2D = preload("res://assets/characters/player/player_spritesheet.png")
 
 # Frame regions are read directly from the single uploaded sprite sheet.
+# Sprite sheet size: 1536x1024. All regions below stay inside these bounds.
 const IDLE_RECTS := [
     Rect2i(61, 14, 168, 228),
     Rect2i(284, 14, 169, 228),
@@ -58,7 +59,11 @@ func _add_animation(frames: SpriteFrames, animation_name: String, regions: Array
     frames.add_animation(animation_name)
     frames.set_animation_speed(animation_name, speed)
     frames.set_animation_loop(animation_name, looping)
+    var texture_size := SPRITESHEET.get_size()
     for region in regions:
+        if region.position.x < 0 or region.position.y < 0 or region.end.x > texture_size.x or region.end.y > texture_size.y:
+            push_error("Sprite frame outside spritesheet: %s / %s" % [animation_name, region])
+            continue
         var atlas_frame := AtlasTexture.new()
         atlas_frame.atlas = SPRITESHEET
         atlas_frame.region = Rect2(region.position, region.size)
