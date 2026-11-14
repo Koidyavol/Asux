@@ -5,6 +5,8 @@ const WORLD_W := 80
 const WORLD_H := 28
 const PLAYER_SCENE := preload("res://scenes/player.tscn")
 const BLOCK_SHEET: Texture2D = preload("res://assets/blocks/blocks_spritesheet.png")
+const SAVE_PATH := "user://asux_world_save.json"
+const AUTOSAVE_INTERVAL := 5.0
 const BLOCK_TILE_COORDS := {
     "Rumput": Vector2i(0, 0),
     "Tanah": Vector2i(1, 0),
@@ -29,6 +31,7 @@ var ui_layer := CanvasLayer.new()
 var info_label: Label
 var inventory_buttons := {}
 var inventory_counts := {}
+var autosave_elapsed := 0.0
 
 func _ready() -> void:
     _setup_input()
@@ -37,12 +40,90 @@ func _ready() -> void:
     player = PLAYER_SCENE.instantiate()
     player.position = Vector2(160, 220)
     add_child(player)
+    _load_world()
     _build_ui()
     _update_inventory_ui()
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
     if Input.is_action_just_pressed("punch"):
         _punch_nearby()
+    autosave_elapsed += delta
+    if autosave_elapsed >= AUTOSAVE_INTERVAL:
+        autosave_elapsed = 0.0
+        _save_world()
+
+func _exit_tree() -> void:
+    _save_world()
+
+func _save_world() -> void:
+    var saved_blocks: Array[Dictionary] = []
+    for cell in cells:
+        saved_blocks.append({
+            "x": cell.x,
+            "y": cell.y,
+            "block": cells[cell]
+        })
+
+    var player_position := [160.0, 220.0]
+    if is_instance_valid(player):
+        player_position = [player.position.x, player.position.y]
+
+    var data := {
+        "version": 1,
+        "blocks": saved_blocks,
+        "inventory": inventory,
+        "selected_block": selected_block,
+        "player_position": player_position
+    }
+    var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+    if file == null:
+        push_warning("AsuX: gagal membuka file save.")
+        return
+    file.store_string(JSON.stringify(data))
+    file.close()
+
+func _load_world() -> void:
+    if not FileAccess.file_exists(SAVE_PATH):
+        return
+    var file := FileAccess.open(SAVE_PATH, FileAccess.READ)
+    if file == null:
+        push_warning("AsuX: file save tidak bisa dibaca.")
+        return
+    var parsed: Variant = JSON.parse_string(file.get_as_text())
+    file.close()
+    if not (parsed is Dictionary):
+        push_warning("AsuX: format file save tidak valid; memakai dunia baru.")
+        return
+    var data: Dictionary = parsed
+    if not (data.get("blocks", null) is Array):
+        push_warning("AsuX: data blok tidak valid; memakai dunia baru.")
+        return
+
+    cells.clear()
+    for child in tile_layer.get_children():
+        child.queue_free()
+    for entry in data["blocks"]:
+        if not (entry is Dictionary):
+            continue
+        var block_name := str(entry.get("block", ""))
+        if not BLOCKS.has(block_name):
+            continue
+        var cell := Vector2i(int(entry.get("x", -1)), int(entry.get("y", -1)))
+        if cell.x < 0 or cell.y < 0 or cell.x >= WORLD_W or cell.y >= WORLD_H:
+            continue
+        _set_cell(cell, block_name)
+
+    var saved_inventory: Variant = data.get("inventory", {})
+    if saved_inventory is Dictionary:
+        for item_name in inventory.keys():
+            if saved_inventory.has(item_name):
+                inventory[item_name] = maxi(0, int(saved_inventory[item_name]))
+    var saved_selected := str(data.get("selected_block", "Tanah"))
+    if inventory.has(saved_selected):
+        selected_block = saved_selected
+    var saved_position: Variant = data.get("player_position", [])
+    if saved_position is Array and saved_position.size() >= 2:
+        player.position = Vector2(float(saved_position[0]), float(saved_position[1]))
 
 func _setup_input() -> void:
     _add_key("move_left", KEY_A)
@@ -133,6 +214,12 @@ func _build_ui() -> void:
     top.position = Vector2(12, 10)
     top.size = Vector2(320, 48)
     ui_layer.add_child(top)
+    var save_button := Button.new()
+    save_button.text = "SIMPAN"
+    save_button.position = Vector2(820, 10)
+    save_button.size = Vector2(128, 48)
+    save_button.pressed.connect(_save_world)
+    ui_layer.add_child(save_button)
     info_label = Label.new()
     info_label.text = "ASUX  |  World 01"
     info_label.add_theme_font_size_override("font_size", 20)
@@ -279,6 +366,7 @@ func _try_place(world_pos: Vector2) -> void:
     _set_cell(cell, selected_block)
     inventory[selected_block] -= 1
     _update_inventory_ui()
+    _save_world()
 
 func _punch_nearby() -> void:
     if player == null:
@@ -300,3 +388,4 @@ func _punch_nearby() -> void:
             break
     inventory[block] += 1
     _update_inventory_ui()
+    _save_world()
