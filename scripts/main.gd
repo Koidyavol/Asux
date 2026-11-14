@@ -4,6 +4,14 @@ const TILE := 32
 const WORLD_W := 80
 const WORLD_H := 28
 const PLAYER_SCENE := preload("res://scenes/player.tscn")
+const BLOCK_SHEET: Texture2D = preload("res://assets/blocks/blocks_spritesheet.png")
+const BLOCK_TILE_COORDS := {
+    "Rumput": Vector2i(0, 0),
+    "Tanah": Vector2i(1, 0),
+    "Batu": Vector2i(2, 0),
+    "Pasir": Vector2i(3, 0),
+    "Air": Vector2i(4, 0)
+}
 const BLOCKS := {
     "Tanah": Color("#9b633d"),
     "Batu": Color("#7b8490"),
@@ -52,6 +60,13 @@ func _add_key(action: String, key: Key) -> void:
     event.physical_keycode = key
     InputMap.action_add_event(action, event)
 
+func _get_block_texture(block: String) -> AtlasTexture:
+    var tile_coord: Vector2i = BLOCK_TILE_COORDS[block]
+    var atlas_texture := AtlasTexture.new()
+    atlas_texture.atlas = BLOCK_SHEET
+    atlas_texture.region = Rect2(tile_coord.x * 64, tile_coord.y * 64, 64, 64)
+    return atlas_texture
+
 func _build_world() -> void:
     for x in range(WORLD_W):
         _set_cell(Vector2i(x, 20), "Tanah")
@@ -87,20 +102,29 @@ func _set_cell(cell: Vector2i, block: String) -> void:
     tile_layer.add_child(body)
     body.set_meta("cell", cell)
     body.add_to_group("world_blocks")
-    var visual := Polygon2D.new()
-    visual.polygon = PackedVector2Array([Vector2(-16, -16), Vector2(16, -16), Vector2(16, 16), Vector2(-16, 16)])
-    visual.color = BLOCKS[block]
-    body.add_child(visual)
-    var outline := Line2D.new()
-    outline.points = PackedVector2Array([Vector2(-16, -16), Vector2(16, -16), Vector2(16, 16), Vector2(-16, 16), Vector2(-16, -16)])
-    outline.width = 1.0
-    outline.default_color = Color(0,0,0,0.22)
-    body.add_child(outline)
+
+    if block == "end":
+        var base_visual := Polygon2D.new()
+        base_visual.polygon = PackedVector2Array([Vector2(-16, -16), Vector2(16, -16), Vector2(16, 16), Vector2(-16, 16)])
+        base_visual.color = BLOCKS[block]
+        body.add_child(base_visual)
+        var outline := Line2D.new()
+        outline.points = PackedVector2Array([Vector2(-16, -16), Vector2(16, -16), Vector2(16, 16), Vector2(-16, 16), Vector2(-16, -16)])
+        outline.width = 1.0
+        outline.default_color = Color(0, 0, 0, 0.22)
+        body.add_child(outline)
+    else:
+        var texture_block := "Rumput" if block == "Tanah" and cell.y == 20 else block
+        var visual := Sprite2D.new()
+        visual.texture = _get_block_texture(texture_block)
+        visual.scale = Vector2(0.5, 0.5)
+        visual.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+        body.add_child(visual)
 
 func _draw() -> void:
     draw_rect(Rect2(-200, 0, WORLD_W * TILE + 400, WORLD_H * TILE), Color("#83c9e8"))
     for x in range(WORLD_W):
-        draw_rect(Rect2(x * TILE, 0, 1, WORLD_H * TILE), Color(1,1,1,0.025))
+        draw_rect(Rect2(x * TILE, 0, 1, WORLD_H * TILE), Color(1, 1, 1, 0.025))
     draw_rect(Rect2(0, 24 * TILE, WORLD_W * TILE, 4 * TILE), Color("#557b48"))
 
 func _build_ui() -> void:
@@ -132,10 +156,13 @@ func _build_ui() -> void:
         b.pressed.connect(_select_block.bind(name))
         ui_layer.add_child(b)
 
-        var icon := ColorRect.new()
+        var icon := TextureRect.new()
         icon.position = Vector2(22, 8)
         icon.size = Vector2(36, 36)
-        icon.color = BLOCKS[name]
+        icon.texture = _get_block_texture(name)
+        icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+        icon.stretch_mode = TextureRect.STRETCH_SCALE
+        icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
         icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
         b.add_child(icon)
 
@@ -244,7 +271,7 @@ func _try_place(world_pos: Vector2) -> void:
     if player == null:
         return
     var cell := Vector2i(floori(world_pos.x / TILE), floori(world_pos.y / TILE))
-    var center := Vector2(cell.x * TILE + TILE/2, cell.y * TILE + TILE/2)
+    var center := Vector2(cell.x * TILE + TILE / 2, cell.y * TILE + TILE / 2)
     if center.distance_to(player.position) > TILE * 4:
         return
     if cells.has(cell) or inventory[selected_block] <= 0:
@@ -268,7 +295,7 @@ func _punch_nearby() -> void:
         return
     cells.erase(target)
     for child in tile_layer.get_children():
-        if child is StaticBody2D and child.get_meta("cell", Vector2i(-999,-999)) == target:
+        if child is StaticBody2D and child.get_meta("cell", Vector2i(-999, -999)) == target:
             child.queue_free()
             break
     inventory[block] += 1
