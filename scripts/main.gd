@@ -8,7 +8,8 @@ const BLOCKS := {
     "Tanah": Color("#9b633d"),
     "Batu": Color("#7b8490"),
     "Air": Color("#3498db"),
-    "Pasir": Color("#e7cc83")
+    "Pasir": Color("#e7cc83"),
+    "end": Color("#34495e")
 }
 
 var player: CharacterBody2D
@@ -56,6 +57,7 @@ func _build_world() -> void:
         _set_cell(Vector2i(x, 21), "Tanah")
         _set_cell(Vector2i(x, 22), "Batu")
         _set_cell(Vector2i(x, 23), "Batu")
+        _set_cell(Vector2i(x, 24), "end")
     for x in range(8, 15):
         _set_cell(Vector2i(x, 19), "Pasir")
     for x in range(25, 30):
@@ -192,6 +194,8 @@ func _punch_nearby() -> void:
     if not cells.has(target):
         return
     var block: String = cells[target]
+    if block == "end":
+        return
     cells.erase(target)
     for child in tile_layer.get_children():
         if child is StaticBody2D and child.get_meta("cell", Vector2i(-999,-999)) == target:
