@@ -20,6 +20,7 @@ var tile_layer := Node2D.new()
 var ui_layer := CanvasLayer.new()
 var info_label: Label
 var inventory_buttons := {}
+var inventory_counts := {}
 
 func _ready() -> void:
     _setup_input()
@@ -124,13 +125,41 @@ func _build_ui() -> void:
     for i in range(names.size()):
         var name: String = names[i]
         var b := Button.new()
-        b.position = Vector2(12 + i * 112, 88)
-        b.size = Vector2(104, 52)
-        b.text = name + "\n20"
-        b.add_theme_font_size_override("font_size", 15)
+        b.position = Vector2(12 + i * 88, 88)
+        b.size = Vector2(80, 82)
+        b.text = ""
+        b.tooltip_text = name
         b.pressed.connect(_select_block.bind(name))
         ui_layer.add_child(b)
+
+        var icon := ColorRect.new()
+        icon.position = Vector2(22, 8)
+        icon.size = Vector2(36, 36)
+        icon.color = BLOCKS[name]
+        icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        b.add_child(icon)
+
+        var item_name := Label.new()
+        item_name.text = name
+        item_name.position = Vector2(4, 48)
+        item_name.size = Vector2(72, 20)
+        item_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+        item_name.add_theme_font_size_override("font_size", 12)
+        item_name.add_theme_color_override("font_color", Color("#17212b"))
+        item_name.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        b.add_child(item_name)
+
+        var count := Label.new()
+        count.position = Vector2(48, 1)
+        count.size = Vector2(29, 18)
+        count.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+        count.add_theme_font_size_override("font_size", 12)
+        count.add_theme_color_override("font_color", Color("#17212b"))
+        count.mouse_filter = Control.MOUSE_FILTER_IGNORE
+        b.add_child(count)
+
         inventory_buttons[name] = b
+        inventory_counts[name] = count
 
     _add_control("◀", Vector2(18, 430), Vector2(72, 72), "move_left")
     _add_control("▶", Vector2(100, 430), Vector2(72, 72), "move_right")
@@ -161,7 +190,8 @@ func _select_block(block: String) -> void:
 func _update_inventory_ui() -> void:
     for block in inventory_buttons:
         var b: Button = inventory_buttons[block]
-        b.text = block + "\n" + str(inventory[block])
+        var count: Label = inventory_counts[block]
+        count.text = str(inventory[block])
         b.modulate = Color("#fff0b3") if block == selected_block else Color.WHITE
 
 func _unhandled_input(event: InputEvent) -> void:
