@@ -30,6 +30,10 @@ func _ready() -> void:
     _build_ui()
     _update_inventory_ui()
 
+func _process(_delta: float) -> void:
+    if Input.is_action_just_pressed("punch"):
+        _punch_nearby()
+
 func _setup_input() -> void:
     _add_key("move_left", KEY_A)
     _add_key("move_left", KEY_LEFT)
@@ -80,7 +84,6 @@ func _set_cell(cell: Vector2i, block: String) -> void:
     tile_layer.add_child(body)
     body.set_meta("cell", cell)
     body.add_to_group("world_blocks")
-    body.draw
     var visual := Polygon2D.new()
     visual.polygon = PackedVector2Array(Vector2(-16,-16), Vector2(16,-16), Vector2(16,16), Vector2(-16,16))
     visual.color = BLOCKS[block]
@@ -164,8 +167,6 @@ func _unhandled_input(event: InputEvent) -> void:
         _try_place(get_global_mouse_position())
     elif event is InputEventScreenTouch and event.pressed:
         _try_place(get_global_mouse_position())
-    if Input.is_action_just_pressed("punch"):
-        _punch_nearby()
 
 func _try_place(world_pos: Vector2) -> void:
     if player == null:
@@ -176,9 +177,6 @@ func _try_place(world_pos: Vector2) -> void:
         return
     if cells.has(cell) or inventory[selected_block] <= 0:
         return
-    if selected_block == "Air":
-        # Air is a decorative liquid block in this first prototype.
-        pass
     _set_cell(cell, selected_block)
     inventory[selected_block] -= 1
     _update_inventory_ui()
