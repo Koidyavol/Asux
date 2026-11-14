@@ -184,7 +184,8 @@ func _try_place(world_pos: Vector2) -> void:
 func _punch_nearby() -> void:
     if player == null:
         return
-    var target := Vector2i(roundi((player.position.x + player.facing * TILE) / TILE), roundi((player.position.y + 8) / TILE))
+    var facing: int = int(player.get("facing"))
+    var target := Vector2i(roundi((player.position.x + facing * TILE) / TILE), roundi((player.position.y + 8) / TILE))
     if not cells.has(target):
         target = Vector2i(roundi(player.position.x / TILE), roundi((player.position.y + 36) / TILE))
     if not cells.has(target):
